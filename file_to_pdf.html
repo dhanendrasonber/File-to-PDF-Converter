@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload and Preview</title>
+    <style>
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .preview {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Upload a File</h2>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <label for="fileInput">Choose file:</label>
+            <input type="file" id="fileInput" name="fileInput" accept=".pdf,.doc,.docx,.txt,.html" required>
+            <br>
+            <label for="fileType">Choose file type:</label>
+            <select id="fileType" name="fileType">
+                <option value="pdf">PDF</option>
+                <option value="doc">DOC</option>
+                <option value="docx">DOCX</option>
+                <option value="txt">TXT</option>
+                <option value="html">HTML</option>
+            </select>
+            <br><br>
+            <label for="pageSize">Choose page size:</label>
+            <select id="pageSize" name="pageSize">
+                <option value="A4">A4</option>
+                <option value="A5">A5</option>
+            </select>
+            <br><br>
+            <button type="button" onclick="uploadFile()">Upload File</button>
+        </form>
+        
+        <div id="previewSection" class="preview" style="display: none;">
+            <h3>File Preview</h3>
+            <div id="filePreview"></div>
+            <a id="downloadLink" style="display: none;" href="#" download>Download File</a>
+        </div>
+    </div>
+
+    <script>
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const fileType = document.getElementById('fileType').value;
+            const pageSize = document.getElementById('pageSize').value;
+            const file = fileInput.files[0];
+            console.log(file)
+        
+            if (!file) {
+                alert('Please select a file.');
+                return;
+            }
+        
+            // Check file type
+            const allowedTypes = ['pdf', 'doc', 'docx', 'txt', 'html'];
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+        
+            if (!allowedTypes.includes(fileExtension)) {
+                alert('Please select a file of type PDF, DOC, DOCX, TXT, or HTML.');
+                return;
+            }
+        
+            const formData = new FormData();
+            formData.append('html_file', file);
+            formData.append('page_size', pageSize);
+        
+            fetch('http://127.0.0.1:8000/template/html_to_pdf/preview/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Display file preview
+                const previewSection = document.getElementById('previewSection');
+                const filePreview = document.getElementById('filePreview');
+                const downloadLink = document.getElementById('downloadLink');
+        
+                // Example: Rendering the file content
+                if (fileExtension === 'html') {
+                    // Display raw HTML content
+                    filePreview.innerHTML = `<pre>${data.content}</pre>`;
+                } else {
+                    // Display text content for other types
+                    filePreview.textContent = data.content;
+                }
+        
+                // Show preview and download link
+                previewSection.style.display = 'block';
+                downloadLink.style.display = 'block';
+                downloadLink.href = '#'; // Set initial href attribute (will be updated dynamically)
+                downloadLink.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    downloadProcessedFile(formData);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error uploading file.');
+            });
+        }
+        
+        function downloadProcessedFile(formData) {
+            fetch('http://127.0.0.1:8000/template/html_to_pdf/download/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // Create a temporary URL for the blob
+                const url = URL.createObjectURL(blob);
+        
+                // Create a temporary <a> element to trigger the download
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'processed-file.pdf'; // Set default file name here
+                document.body.appendChild(a);
+                a.click();
+        
+                // Cleanup
+                URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error downloading file.');
+            });
+        }
+             
+    </script>
+</body>
+</html>
