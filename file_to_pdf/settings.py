@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "html_to_pdf",
+    "sheet_to_pdf",
 
 ]
 
